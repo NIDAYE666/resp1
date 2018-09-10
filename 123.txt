@@ -1,0 +1,268 @@
+CREATE TABLE tb_dept(  
+    DeptNum char(10) NOT NULL PRIMARY KEY,  
+    DeptName varchar(20) NOT NULL,  
+    DeptChairman varchar(10) NOT NULL,  
+    DeptTel varchar(15) NOT NULL,  
+    DeptDesc text NOT NULL,  
+)  
+
+
+CREATE TABLE tb_major(  
+    MajorNum char(10) NOT NULL PRIMARY KEY,  
+    DeptNum char(10) NOT NULL,  
+    MajorName varchar(20) NOT NULL,  
+    MajorAssistant varchar(10) NOT NULL,  
+    MajorTel varchar(15) NOT NULL,  
+    FOREIGN KEY (DeptNum) REFERENCES tb_dept(DeptNum)  
+)  
+
+
+
+
+CREATE TABLE tb_student(  
+    StudentNum char(10) NOT NULL PRIMARY KEY,  
+    MajorNum char(10) NOT NULL,  
+    StudentName varchar(10) NULL,  
+    StudentSex char(2) NOT NULL,  
+    StudentBirthday datetime NOT NULL,  
+    StudentPassword varchar(20) NOT NULL,  
+    FOREIGN KEY (MajorNum) REFERENCES tb_major(MajorNum)  
+)  
+
+
+
+CREATE TABLE tb_teacher(  
+    TeacherNum char(10) NOT NULL PRIMARY KEY,  
+    DeptNum char(10) NOT NULL,  
+    TeacherName varchar(10) NOT NULL,  
+    TeacherSex char(2) NOT NULL,  
+    TeacherBirthday datetime NOT NULL,  
+    TeacherTitle varchar(20) NULL,  
+    FOREIGN KEY (DeptNum) REFERENCES tb_dept(DeptNum)  
+)  
+
+
+CREATE TABLE tb_manager(  
+ManagerNum char(10) NOT NULL PRIMARY KEY,  
+ManagerName varchar(10) NOT NULL,  
+ManagerSex char(2) NOT NULL,  
+ManagerBirthdate datetime NOT NULL,  
+ManagerRights int NOT NULL  
+ )  
+
+
+
+CREATE TABLE tb_course(  
+    CourseNum varchar(10) NOT NULL PRIMARY KEY,  
+    CourseName varchar(20) NOT NULL,  
+    CourseCredit float NOT NULL,  
+    CourseClass smallint NOT NULL,  
+    CourseDesc text NOT NULL,  
+)  
+
+
+CREATE TABLE tb_stucourse(  
+    StudentNum char(10) NOT NULL,  
+    CourseNum char(10) NOT NULL,  
+    TeacherNum char(10) NOT NULL,  
+    Grade smallint NULL,  
+    FOREIGN KEY (StudentNum) REFERENCES tb_student(StudentNum),  
+    FOREIGN KEY (CourseNum) REFERENCES tb_Course(CourseNum),  
+    FOREIGN KEY (TeacherNum) REFERENCES tb_teacher(TeacherNum),   
+)  
+
+
+CREATE TABLE tb_control(  
+    IfTakeCourse char(1) NOT NULL check(IfTakeCourse in ( '0', '1')),  
+    IfInputGrade char(1) NOT NULL check(IfInputGrade in ( '0', '1')),  
+)  
+
+
+
+
+CREATE VIEW vi_grade  
+AS  
+SELECT tb_stucourse.StudentNum,StudentName,CourseName  
+        ,CourseCredit,TeacherName,Grade  
+FROM tb_stucourse,tb_student,tb_course,tb_teacher  
+where tb_stucourse.StudentNum=tb_student.StudentNum and  
+      tb_stucourse.TeacherNum=tb_teacher.TeacherNum and  
+      tb_stucourse.CourseNum=tb_course.CourseNum and  
+      Grade is not null  
+
+
+
+
+
+CREATE VIEW vi_major  
+AS  
+SELECT tb_major.MajorName,StudentNum,StudentName,StudentSex,StudentBirthday  
+FROM tb_major,tb_student  
+WHERE tb_major.MajorNum=tb_student.MajorNum 
+
+
+
+
+CREATE TRIGGER tri_adddept ON tb_dept  
+FOR INSERT,UPDATE  
+AS  
+IF  
+    (SELECT COUNT(*) FROM tb_dept,inserted   
+    WHERE tb_dept.DeptNum=inserted.DeptNum)>0  
+BEGIN  
+    PRINT '院系号码产生冲突，请核对后重试！'  
+    ROLLBACK  
+END  
+
+
+
+
+CREATE TRIGGER tri_addmajor ON tb_major  
+FOR INSERT,UPDATE  
+AS  
+    IF(SELECT COUNT(*) FROM tb_dept,inserted  
+    WHERE tb_dept.DeptNum=inserted.DeptNum)=0  
+BEGIN  
+    PRINT '未找到该专业的院系信息，请添加相应院系后重试！'  
+    ROLLBACK  
+END  
+ELSE IF  
+    (SELECT COUNT(*) FROM tb_major,inserted   
+    WHERE tb_major.MajorNum=inserted.MajorNum)>0  
+BEGIN  
+    PRINT '院系号码产生冲突，请核对后重试！'  
+    ROLLBACK  
+END  
+
+
+
+
+CREATE TRIGGER tri_addstudent ON tb_student  
+FOR INSERT,UPDATE  
+AS  
+    IF(SELECT COUNT(*) FROM tb_major,inserted  
+    WHERE tb_major.MajorNum=inserted.MajorNum)=0  
+BEGIN  
+    PRINT '未找到该学生的专业信息，请添加相应专业后重试！'  
+    ROLLBACK  
+END  
+ELSE IF  
+    (SELECT COUNT(*) FROM tb_student,inserted   
+    WHERE tb_student.StudentNum=inserted.StudentNum)>0  
+BEGIN  
+    PRINT '学号产生冲突，请核对后重试！'  
+    ROLLBACK  
+END  
+
+
+
+
+
+
+
+CREATE TRIGGER tri_takecourse ON tb_stucourse  
+FOR INSERT,UPDATE  
+AS  
+    IF(SELECT COUNT(*) FROM tb_stucourse,inserted  
+    WHERE tb_stucourse.CourseNum=inserted.CourseNum)>40  
+BEGIN  
+    PRINT '所对应课程选课人数不能超过40个！'  
+    ROLLBACK  
+END  
+ELSE IF  
+    (SELECT COUNT(*) FROM tb_student,inserted   
+    WHERE tb_student.StudentNum=inserted.StudentNum)>5  
+BEGIN  
+    PRINT '对应学生的选课不能超过5门！'  
+    ROLLBACK  
+END  
+ELSE IF  
+    (SELECT IfTakeCourse FROM tb_control)='0'  
+BEGIN  
+    PRINT '当前不是选课时间段！'  
+    ROLLBACK  
+END  
+
+
+
+
+
+
+
+
+CREATE PROC proc_getcourse  
+@StudentNum char(10) OUT,  
+@StudentName char(10) OUT,  
+@CourseName varchar(20) OUT,  
+@CourseCredit float OUT,  
+@TeacherName char(10) OUT  
+AS  
+    SELECT @StudentNum=tb_student.StudentNum  
+            ,@StudentName=tb_student.StudentName  
+            , @CourseName=tb_course.CourseName  
+            ,@CourseCredit=tb_course.CourseCredit  
+            , @TeacherName=tb_teacher.TeacherName  
+    FROM tb_stucourse,tb_course,tb_student,tb_teacher  
+    WHERE tb_stucourse.StudentNum=tb_student.StudentNum AND  
+            tb_stucourse.CourseNum=tb_course.CourseNum AND  
+            tb_stucourse.TeacherNum=tb_teacher.TeacherNum  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE PROC proc_teachercourse  
+@TeacherNum char(10),  
+@StudentNum char(10) OUT,  
+@StudentName char(10) OUT,  
+@CourseName varchar(20) OUT,  
+@CourseCredit float OUT,  
+@TeacherName char(10) OUT  
+AS  
+    SELECT @StudentNum=tb_student.StudentNum  
+            ,@StudentName=tb_student.StudentName  
+            , @CourseName=tb_course.CourseName  
+            ,@CourseCredit=tb_course.CourseCredit  
+            , @TeacherName=tb_teacher.TeacherName  
+    FROM tb_stucourse,tb_course,tb_student,tb_teacher  
+    WHERE tb_stucourse.StudentNum=tb_student.StudentNum AND  
+            tb_stucourse.CourseNum=tb_course.CourseNum AND  
+            tb_stucourse.TeacherNum=tb_teacher.TeacherNum and  
+            tb_teacher.TeacherNum=@TeacherNum  
+
+
+
+
+
+
+
+
+
+
+CREATE PROC proc_studentcourse  
+@StudentNum char(10),  
+@StudentName char(10) OUT,  
+@CourseName varchar(20) OUT,  
+@CourseCredit float OUT,  
+@TeacherName char(10) OUT  
+AS  
+    SELECT @StudentNum=tb_student.StudentNum  
+            ,@StudentName=tb_student.StudentName  
+            , @CourseName=tb_course.CourseName  
+            ,@CourseCredit=tb_course.CourseCredit  
+            , @TeacherName=tb_teacher.TeacherName  
+    FROM tb_stucourse,tb_course,tb_student,tb_teacher  
+    WHERE tb_stucourse.StudentNum=tb_student.StudentNum AND  
+            tb_stucourse.CourseNum=tb_course.CourseNum AND  
+            tb_stucourse.TeacherNum=tb_teacher.TeacherNum and  
+            tb_student.StudentNum=@StudentNum 
