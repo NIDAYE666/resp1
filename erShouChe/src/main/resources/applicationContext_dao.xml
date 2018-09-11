@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop" 
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+     http://www.springframework.org/schema/beans/spring-beans.xsd
+     http://www.springframework.org/schema/context
+     http://www.springframework.org/schema/context/spring-context.xsd
+     http://www.springframework.org/schema/tx
+     http://www.springframework.org/schema/tx/spring-tx.xsd
+     http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop.xsd
+     http://www.springframework.org/schema/mvc
+     http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+	<!-- 读取db,properties文件 -->
+<!-- 	<bean
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations" value="classpath:db.properties" />
+	</bean> -->
+
+	<!-- spring数据源 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://127.0.0.1/favarite" />
+		<property name="username" value="root" />
+		<property name="password" value="a" />
+	</bean>
+
+	<!-- 我们选用的dao层的mybatis框架，但spring没有提供mybatis的整合的功能，但mybatis自己开发了一个插件，mybatis-spring.xxx.jar -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 引入数据源    这个sqlSessionFactory中，主要完成读取mybatis的配置文件的工作 -->
+		<property name="dataSource" ref="dataSource" />
+		<!-- 配置configLocation :mybatis的配置文件路径，空上sqlSessionFactory会完成读取这个配置文件************************** -->
+		<!-- <property name="configLocation" value="classpath:mybatis-config.xml" 
+			/> -->
+
+		<property name="typeAliasesPackage" value="com/yc/bean" /><!-- 别名，mapper中的返回值会自动加上这个包名 -->
+		<!-- 配置映射文件Mapper.xml -->
+		<property name="mapperLocations" value="classpath:com/yc/dao/*.xml"></property>
+	</bean>
+
+	<!-- mybatis sqlSession -->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+
+	<!-- 1.添加命名空间，改五处 ，2.事务管理器  -->
+	<tx:annotation-driven transaction-manager="txManager" />
+	<bean id="txManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+</beans>
