@@ -2,6 +2,14 @@ package com.yc.bean;
 
 import java.sql.Date;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity//实体类注解
+@Table(name="userinfo")
 public class UserinfoBean implements java.io.Serializable{
 
 	/**
@@ -9,6 +17,8 @@ public class UserinfoBean implements java.io.Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	@Id  //主键注解
+	@GeneratedValue(strategy=GenerationType.AUTO)//配置主键值的生成机制
 	private Integer uid;
 	private String uname;
 	private String upwd;

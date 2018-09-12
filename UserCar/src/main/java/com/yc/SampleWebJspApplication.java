@@ -14,6 +14,7 @@ public class SampleWebJspApplication extends SpringBootServletInitializer {
 	}
 
 	public static void main(String[] args) {
+		System.out.println("AAAAAAAAAAAAAAAAAAAAAA"+System.currentTimeMillis());
 		SpringApplication.run(SampleWebJspApplication.class, args);
 	}
 
